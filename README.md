@@ -1,6 +1,6 @@
 # likely
 
-A Claude Code hook that catches AI hedging and forces verification.
+A Claude Code hook that catches AI hedging, making ungrounded assumptions, and forces verification as a way for self-healing.
 
 ## The Problem
 
