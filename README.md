@@ -134,6 +134,17 @@ On the next user message, the enforcer:
 - **Feedback loop, not blocking** — hooks can't re-generate responses. Instead, the correction shapes the *next* turn. The AI learns within the session.
 - **Zero dependencies** — plain Node.js, no npm packages. Just `fs`, `path`, `os`.
 
+## Relation to Buddy Guard Mode
+
+This project is a companion to [Buddy](https://github.com/fiorastudio/buddy) — an MCP coding companion that tracks reasoning quality via guard mode. Buddy's guard mode extracts claims from conversations and scores them by epistemic basis (empirical, deduction, research, assumption, vibes). The `likely` hooks address a complementary problem:
+
+- **Buddy guard mode** observes reasoning *structure* — are claims well-sourced? Do they support or contradict each other?
+- **likely** observes reasoning *confidence* — is the AI hedging when it should be verifying?
+
+Together they form a two-layer quality system: Buddy watches the *what* (claim graph integrity), `likely` watches the *how* (are claims backed by evidence or just hedged guesses).
+
+The hedging analysis data that motivated this project (35% session penetration, median turn 1 for "potentially") was collected using the same DuckDB analytics pipeline that powers Buddy's reasoning insights.
+
 ## Limitations
 
 - Corrective context arrives on the **next turn**, not the current one. The hedged response is already shown.
