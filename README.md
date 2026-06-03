@@ -6,17 +6,19 @@ A Claude Code hook that catches AI hedging and forces verification.
 
 LLMs hedge constantly. Words like "likely", "potentially", "probably" appear in **35% of sessions** — not because the model is uncertain, but because it's trained to sound non-committal. This is dangerous in a coding context: when the AI says "this will likely work," it might be guessing rather than verifying.
 
-After analyzing 14,000+ messages across Claude Code, Codex, and Cortex sessions, the data shows:
+After analyzing 14,000+ messages across Claude Code, Codex, and Cortex sessions:
 
-| Word | % Sessions | AI vs Human |
-|------|-----------|-------------|
-| likely | 34.6% | 91% AI |
-| potentially | 13.2% | 71% AI |
-| probably | 11.8% | 86% AI |
-| possibly | 3.1% | 100% AI |
-| presumably | 1.8% | 100% AI |
+![AI Hedging Analysis — How fast does the AI start hedging?](dashboard-hedging.png)
 
-The AI uses "potentially" by **turn 1** (median). "Likely" shows up by **turn 7**. These aren't genuine expressions of uncertainty — they're verbal tics that mask whether the AI actually verified its claims.
+| Word | % Sessions | Median Turn (first use) | Avg Turn |
+|------|-----------|------------------------|----------|
+| likely | 34.5% | **6** | 17.5 |
+| potentially | 14.2% | **2** | 10.2 |
+| probably | 11.5% | 26 | 59.9 |
+| possibly | 3.5% | 108 | 86.4 |
+| presumably | 2.7% | 44 | 45.5 |
+
+The AI uses "potentially" by **turn 2** (median). "Likely" shows up by **turn 6**. These aren't genuine expressions of uncertainty — they're verbal tics that mask whether the AI actually verified its claims.
 
 ## The Solution
 
