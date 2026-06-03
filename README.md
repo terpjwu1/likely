@@ -47,20 +47,27 @@ The AI doesn't just rephrase with more confidence — it's forced to **do the re
 
 ## Installation
 
+**macOS / Linux:**
 ```bash
-# Clone
-git clone https://github.com/terpjwu1/likely.git
-cd likely
-
-# Copy hooks to Claude Code
-mkdir -p ~/.claude/hooks/signals
-cp hedge-detector.js ~/.claude/hooks/
-cp hedge-enforcer.js ~/.claude/hooks/
-
-# Add to ~/.claude/settings.json (merge into existing hooks):
+curl -fsSL https://raw.githubusercontent.com/terpjwu1/likely/main/install.sh | bash
 ```
 
-Add these to your `settings.json` hooks section:
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/terpjwu1/likely/main/install.ps1 | iex
+```
+
+Restart Claude Code after installing.
+
+**To uninstall:**
+```bash
+cp ~/.claude/settings.json.bak-likely ~/.claude/settings.json
+rm ~/.claude/hooks/hedge-detector.js ~/.claude/hooks/hedge-enforcer.js
+```
+
+### Manual Installation
+
+If you prefer to configure manually, add these to your `~/.claude/settings.json` hooks section:
 
 ```json
 {
