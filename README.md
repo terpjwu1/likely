@@ -173,6 +173,65 @@ echo '{"session_id":"test"}' | node hedge-enforcer.js
 # Should output JSON with additionalContext
 ```
 
+## Evaluation Results (2026-06-09)
+
+LLM-reviewed analysis of all hook fires across Claude Code sessions (sessionSearch + giffrey projects), Codex, and Cortex. Each exchange was reviewed in full context: what the AI said before the hook fired, the hook injection, and the AI's response after.
+
+### Summary
+
+| Metric | Value |
+|---|---|
+| Total hook fires analyzed | 11 |
+| False positive rate | 55% (6/11) |
+| Effectiveness rate | 45% (5/11) |
+| Value added when correctly fired | **100% (5/5)** |
+
+When the hook correctly identifies lazy speculation, the AI verifies every single time. The false positive rate is noisy but tolerable — the cost is just a slightly longer response where the AI double-checks something that was already fine.
+
+### Per-Fire Analysis
+
+| # | Project | Detected Word | FP? | Value? | What Happened |
+|---|---|---|---|---|---|
+| 1 | giffrey | "likely" | Yes | No | Appropriate uncertainty about config variants |
+| 2 | giffrey | "likely, might be" | **No** | **Yes** | Speculation → concrete diagnostic table with verified data |
+| 3 | giffrey | "likely, could be" | **No** | **Yes** | Guesses → inspected git log, traced to specific commit |
+| 4 | giffrey | "probably, might be" | **No** | **Yes** | Speculation → verified actual file duration, found real bug |
+| 5 | sessionSearch | "likely" | Yes | No | Triggered on "likely" in a GitHub repo name |
+| 6 | sessionSearch | "likely" | Yes | No | Same — repo name false positive |
+| 7 | sessionSearch | "likely" | Yes | No | Word not in AI's response — context bleed |
+| 8 | sessionSearch | "likely" | **No** | **Yes** | "likely expired" → moved to actionable code fix |
+| 9 | sessionSearch | "could be" | Yes | No | Used illustratively in an example |
+| 10 | sessionSearch | "could be" | **No** | **Yes** | Ambiguity acknowledged → inspected prompt, found bugs |
+| 11 | sessionSearch | "likely" | Yes | No | Fired on context outside AI's response |
+
+### False Positive Patterns
+
+| Pattern | Count | Example |
+|---|---|---|
+| Word in proper noun/URL | 2 | "likely" as a GitHub repo name |
+| Appropriate epistemic hedging | 2 | Genuine uncertainty ("I don't know which config variant") |
+| Context bleed | 2 | Word in quoted text or surrounding session context |
+
+### True Positive Behavior Changes
+
+All 5 true positive cases follow the same pattern:
+
+1. **Before**: AI makes speculative technical claim without evidence
+2. **Hook fires**: "Verify your assumptions before responding"
+3. **After**: AI investigates — reads files, checks git history, runs commands, produces evidence
+
+Examples:
+- Speculation about quality loss → concrete diagnostic table with verified resolution data
+- Unverified guesses about audio muffling → inspected git log, traced to specific prior commit
+- "Probably a timing issue" → measured actual file duration (5:45), found real bug in trim logic
+
+### Methodology
+
+- Extracted full conversation context (before/after) from raw JSONL session transcripts
+- Sent 11 exchanges to Claude Sonnet 4.6 for blind evaluation
+- Each exchange judged on: was the hedge appropriate? did behavior change? did the hook add value?
+- Analysis covers sessions from 2026-06-03 (install date) through 2026-06-09
+
 ## License
 
 MIT
