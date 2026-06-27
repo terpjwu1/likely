@@ -67,6 +67,38 @@ fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
 "
 
 echo "  Registered hooks in settings.json"
+
+# Add CLAUDE.md instruction (persistent baseline rule)
+CLAUDE_MD="$HOME/.claude/CLAUDE.md"
+MARKER="<!-- likely:start -->"
+
+if [ -f "$CLAUDE_MD" ] && grep -q "$MARKER" "$CLAUDE_MD"; then
+  echo "  $CLAUDE_MD already has anti-hedging rule (skipped)"
+else
+  # Backup existing CLAUDE.md
+  if [ -f "$CLAUDE_MD" ]; then
+    cp "$CLAUDE_MD" "$CLAUDE_MD.bak-likely"
+    echo "  Backed up $CLAUDE_MD"
+  fi
+  cat >> "$CLAUDE_MD" << 'MDEOF'
+
+<!-- likely:start -->
+## Ambiguity, Uncertainty, & lack of Clarity
+
+NEVER make assumptions or guesses when information is unclear, uncertain, or ambiguous. First, leverage tools, skills, and/or plugins to collect information and evidence, or if needed, deploy a team of research agents. You may always ask the user to help clarify information, it's better to ask the user instead of assuming or guessing, as assumptions or guesses can waste considerable time and effort.
+<!-- likely:end -->
+MDEOF
+  echo "  Added anti-hedging rule to $CLAUDE_MD"
+fi
+
 echo ""
 echo "Done. Restart Claude Code to activate."
-echo "To uninstall: cp $SETTINGS.bak-likely $SETTINGS"
+echo ""
+echo "Two layers installed:"
+echo "  1. CLAUDE.md rule — prevents hedging proactively (read at session start)"
+echo "  2. Hooks — catches violations that slip through and forces verification"
+echo ""
+echo "To uninstall:"
+echo "  cp $SETTINGS.bak-likely $SETTINGS"
+echo "  rm $HOOKS_DIR/hedge-detector.js $HOOKS_DIR/hedge-enforcer.js"
+echo "  sed -i '' '/<!-- likely:start -->/,/<!-- likely:end -->/d' $CLAUDE_MD"

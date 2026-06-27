@@ -45,6 +45,31 @@ AI responds: "this will likely work"
 
 The AI doesn't just rephrase with more confidence — it's forced to **do the research** and cite what it found.
 
+## Two-Layer Defense
+
+The install sets up two complementary layers:
+
+| Layer | Mechanism | When it acts | Effect |
+|---|---|---|---|
+| **CLAUDE.md rule** | Persistent instruction in `~/.claude/CLAUDE.md` | Read at session start | Prevents hedging proactively — AI knows from the start to verify instead of guess |
+| **Hooks** | Ephemeral per-turn injection | After hedging is detected | Catches violations that slip through and forces immediate verification |
+
+In community testing, users report the CLAUDE.md rule alone reduces hedging noticeably — the AI reads it at session start and adjusts its default behavior. The hooks act as enforcement for cases where the AI still defaults to hedging under pressure (long contexts, complex debugging, uncertain system state).
+
+The rule installed (wrapped in markers for clean uninstall):
+
+```markdown
+<!-- likely:start -->
+## Ambiguity, Uncertainty, & lack of Clarity
+
+NEVER make assumptions or guesses when information is unclear, uncertain, or ambiguous.
+First, leverage tools, skills, and/or plugins to collect information and evidence, or
+if needed, deploy a team of research agents. You may always ask the user to help clarify
+information, it's better to ask the user instead of assuming or guessing, as assumptions
+or guesses can waste considerable time and effort.
+<!-- likely:end -->
+```
+
 ## Installation
 
 **macOS / Linux:**
@@ -63,6 +88,7 @@ Restart Claude Code after installing.
 ```bash
 cp ~/.claude/settings.json.bak-likely ~/.claude/settings.json
 rm ~/.claude/hooks/hedge-detector.js ~/.claude/hooks/hedge-enforcer.js
+sed -i '' '/<!-- likely:start -->/,/<!-- likely:end -->/d' ~/.claude/CLAUDE.md
 ```
 
 ### Manual Installation
@@ -173,11 +199,49 @@ echo '{"session_id":"test"}' | node hedge-enforcer.js
 # Should output JSON with additionalContext
 ```
 
-## Evaluation Results (2026-06-09)
+## Evaluation Results
 
-LLM-reviewed analysis of all hook fires across Claude Code sessions (sessionSearch + giffrey projects), Codex, and Cortex. Each exchange was reviewed in full context: what the AI said before the hook fired, the hook injection, and the AI's response after.
+LLM-reviewed analysis of hook fires across Claude Code sessions. Each exchange reviewed in full context: AI response before hook → hook injection → AI response after.
 
-### Summary
+### Latest Eval: Week of 2026-06-20 (18 fires)
+
+| Metric | Value | vs Prior |
+|---|---|---|
+| Total hook fires analyzed | 18 | +7 |
+| False positive rate | 44% (8/18) | improved from 55% |
+| Effectiveness rate | 44% (8/18) | stable |
+| Value added on true positives | **73% (8/10)** | down from 100% |
+| Total fires all time | 44 | — |
+| Projects covered | 4 (onDeviceIntentEngine, algolia, sessionSearch, giffrey) | +2 new |
+
+#### Per-Fire Analysis
+
+| # | Project | Word | FP? | Value? | What Happened |
+|---|---|---|---|---|---|
+| 1 | onDeviceIntentEngine | "could be" | Yes | No | Misfired on incomplete display context |
+| 2 | onDeviceIntentEngine | "might be" | **No** | **Yes** | Cold-start speculation → committed to verifying Nano capabilities |
+| 3 | onDeviceIntentEngine | "might be" | Yes | No | Appropriate hedge about browser caching |
+| 4 | onDeviceIntentEngine | "probably" | **No** | **Yes** | Speculation about assembly pipeline → verified actual code path |
+| 5 | onDeviceIntentEngine | "might be" | **No** | No | Genuine uncertainty, hook fired correctly but AI ignored it |
+| 6 | onDeviceIntentEngine | "likely" | Yes | No | Appropriate epistemic humility about a diagnosable bug |
+| 7 | onDeviceIntentEngine | "might be" | Yes | No | Appropriately cautious about iframe errors |
+| 8 | onDeviceIntentEngine | "likely" | **No** | **Yes** | Lazy "likely a Bedrock key" → investigated, found correct Portkey config |
+| 9 | onDeviceIntentEngine | "likely" | Yes | No | Well-founded claim about LLM behavior, not speculation |
+| 10 | onDeviceIntentEngine | "likely" | **No** | **Yes** | Speculated about beforeunload → verified actual localStorage save logic |
+| 11 | onDeviceIntentEngine | "could be" | Yes | No | False trigger on UI state description |
+| 12 | onDeviceIntentEngine | "could be, likely" | Yes | No | Appropriate hedges in privacy/legal analysis |
+| 13 | onDeviceIntentEngine | "likely, probably" | **No** | **Yes** | Attributed p95 latency to context injection → found retries as true cause |
+| 14 | algolia | "could be" | Yes | No | Hook fired on diagram color critique |
+| 15 | algolia | "might be" | **No** | **Yes** | Flagged assumptions → data investigation corrected V-code relationship model |
+| 16 | algolia | "likely" | **No** | **Yes** | Speculated about leftover DOM → found showResponse/grid container bug |
+| 17 | algolia | "might be" | **No** | **Yes** | Hypothesized URL fabrication → index inspection confirmed stale URLs + missing field |
+| 18 | sessionSearch | "likely" | Yes | No | Factual recap referencing prior eval, not speculation |
+
+#### New Insight: Hook-Fired-But-Ignored
+
+Two exchanges (#5, #12) show a new failure mode: the hook fired correctly on genuine hedges, but the AI **completely ignored** the verification instruction and moved on. Prior eval showed 100% compliance; this week shows ~73%. The hook's influence is not absolute.
+
+### Prior Eval: 2026-06-09 (11 fires)
 
 | Metric | Value |
 |---|---|
@@ -186,9 +250,8 @@ LLM-reviewed analysis of all hook fires across Claude Code sessions (sessionSear
 | Effectiveness rate | 45% (5/11) |
 | Value added when correctly fired | **100% (5/5)** |
 
-When the hook correctly identifies lazy speculation, the AI verifies every single time. The false positive rate is noisy but tolerable — the cost is just a slightly longer response where the AI double-checks something that was already fine.
-
-### Per-Fire Analysis
+<details>
+<summary>Per-fire details (click to expand)</summary>
 
 | # | Project | Detected Word | FP? | Value? | What Happened |
 |---|---|---|---|---|---|
@@ -204,33 +267,37 @@ When the hook correctly identifies lazy speculation, the AI verifies every singl
 | 10 | sessionSearch | "could be" | **No** | **Yes** | Ambiguity acknowledged → inspected prompt, found bugs |
 | 11 | sessionSearch | "likely" | Yes | No | Fired on context outside AI's response |
 
-### False Positive Patterns
+</details>
 
-| Pattern | Count | Example |
-|---|---|---|
-| Word in proper noun/URL | 2 | "likely" as a GitHub repo name |
-| Appropriate epistemic hedging | 2 | Genuine uncertainty ("I don't know which config variant") |
-| Context bleed | 2 | Word in quoted text or surrounding session context |
+### Cumulative False Positive Patterns
 
-### True Positive Behavior Changes
+| Pattern | Count | Example | Fix |
+|---|---|---|---|
+| Appropriate epistemic hedging | 5 | Genuine uncertainty in legal/privacy/caching contexts | Exempt domains where hedging is structurally correct |
+| Context bleed / invisible word | 4 | Word in quoted text, diagram, or surrounding context | Scope detection to AI's own prose only |
+| Word in proper noun/URL | 2 | "likely" as a GitHub repo name | Require hedge word in grammatical clause, not adjacent to URL/slash |
+| Factual recap | 1 | Referencing a prior eval result | Exclude session-summary/recap messages |
+| Illustrative example | 1 | "this could be either X or Y" in a definition | Don't fire when word is inside quotation marks |
 
-All 5 true positive cases follow the same pattern:
+### True Positive Behavior Pattern
 
-1. **Before**: AI makes speculative technical claim without evidence
-2. **Hook fires**: "Verify your assumptions before responding"
-3. **After**: AI investigates — reads files, checks git history, runs commands, produces evidence
+When the hook fires correctly on lazy speculation, the AI consistently:
+1. Stops speculating
+2. Uses tools to verify (reads files, checks git history, inspects data, runs commands)
+3. Cites concrete evidence in the response
 
-Examples:
-- Speculation about quality loss → concrete diagnostic table with verified resolution data
-- Unverified guesses about audio muffling → inspected git log, traced to specific prior commit
-- "Probably a timing issue" → measured actual file duration (5:45), found real bug in trim logic
+Examples across projects:
+- **giffrey**: "Probably a timing issue" → measured actual file duration (5:45), found real bug in trim logic
+- **onDeviceIntentEngine**: "Likely a Bedrock key" → investigated env vars, found correct Portkey gateway
+- **algolia**: "Might be fabricated URLs" → index inspection confirmed stale URL pattern + missing product_code field
+- **onDeviceIntentEngine**: Attributed p95 latency to context injection → root-cause analysis found followup retries as true cause
 
 ### Methodology
 
-- Extracted full conversation context (before/after) from raw JSONL session transcripts
-- Sent 11 exchanges to Claude Sonnet 4.6 for blind evaluation
-- Each exchange judged on: was the hedge appropriate? did behavior change? did the hook add value?
-- Analysis covers sessions from 2026-06-03 (install date) through 2026-06-09
+- Full conversation context extracted from raw JSONL session transcripts (Claude Code `attachment` entries with `hook_additional_context` type)
+- Exchanges sent to Claude Sonnet 4.6 for blind evaluation
+- Each judged on: was the hedge appropriate? did behavior change? did the hook add value?
+- Covers 4 projects, 8 sessions, 44 total fires from 2026-06-03 through 2026-06-27
 
 ## License
 

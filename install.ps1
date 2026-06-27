@@ -69,6 +69,39 @@ fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
 node -e $NodeScript -- $Settings $DetectorCmd $EnforcerCmd
 
 Write-Host "  Registered hooks in settings.json"
+
+# Add CLAUDE.md instruction (persistent baseline rule)
+$ClaudeMd = "$env:USERPROFILE\.claude\CLAUDE.md"
+$Marker = "<!-- likely:start -->"
+$Rule = @"
+
+<!-- likely:start -->
+## Ambiguity, Uncertainty, & lack of Clarity
+
+NEVER make assumptions or guesses when information is unclear, uncertain, or ambiguous. First, leverage tools, skills, and/or plugins to collect information and evidence, or if needed, deploy a team of research agents. You may always ask the user to help clarify information, it's better to ask the user instead of assuming or guessing, as assumptions or guesses can waste considerable time and effort.
+<!-- likely:end -->
+"@
+
+if ((Test-Path $ClaudeMd) -and (Select-String -Path $ClaudeMd -Pattern $Marker -SimpleMatch -Quiet)) {
+    Write-Host "  $ClaudeMd already has anti-hedging rule (skipped)"
+} else {
+    # Backup existing CLAUDE.md
+    if (Test-Path $ClaudeMd) {
+        Copy-Item $ClaudeMd "$ClaudeMd.bak-likely"
+        Write-Host "  Backed up $ClaudeMd"
+    }
+    Add-Content -Path $ClaudeMd -Value $Rule -Encoding UTF8
+    Write-Host "  Added anti-hedging rule to $ClaudeMd"
+}
+
 Write-Host ""
 Write-Host "Done. Restart Claude Code to activate."
-Write-Host "To uninstall: Copy-Item '$Settings.bak-likely' '$Settings'"
+Write-Host ""
+Write-Host "Two layers installed:"
+Write-Host "  1. CLAUDE.md rule - prevents hedging proactively (read at session start)"
+Write-Host "  2. Hooks - catches violations that slip through and forces verification"
+Write-Host ""
+Write-Host "To uninstall:"
+Write-Host "  Copy-Item '$Settings.bak-likely' '$Settings'"
+Write-Host "  Remove-Item '$HooksDir\hedge-detector.js', '$HooksDir\hedge-enforcer.js'"
+Write-Host "  (Get-Content '$ClaudeMd') -replace '(?s)<!-- likely:start -->.*?<!-- likely:end -->\r?\n?', '' | Set-Content '$ClaudeMd' -Encoding UTF8"
