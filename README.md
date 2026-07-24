@@ -203,7 +203,22 @@ echo '{"session_id":"test"}' | node hedge-enforcer.js
 
 LLM-reviewed analysis of hook fires across Claude Code sessions. Each exchange reviewed in full context: AI response before hook → hook injection → AI response after.
 
-### Latest Eval: Week of 2026-06-20 (18 fires)
+### Latest Eval: June 28 – July 24 (71 fires, 19 projects)
+
+| Metric | Value | vs Prior |
+|---|---|---|
+| Total hook fires analyzed | 71 | +53 |
+| False positive rate | 33% (24/71) | improved from 44% |
+| Behavior changed | **77% (55/71)** | up from 61% |
+| Value added | **59% (42/71)** | up from 44% |
+| Value added on true positives | **89% (42/47)** | recovered from 73% |
+| Hook ignored (TP, no change) | 10% (5/47) | down from 27% |
+| Total fires all time | 116 | — |
+| Projects covered | 19 | +15 new |
+
+The hook is getting more effective over time. The CLAUDE.md rule (added in v2.0) reduces baseline hedging, so the hook now fires on more genuine speculation and less noise.
+
+### Eval 2: Week of 2026-06-20 (18 fires)
 
 | Metric | Value | vs Prior |
 |---|---|---|
@@ -297,7 +312,8 @@ Examples across projects:
 - Full conversation context extracted from raw JSONL session transcripts (Claude Code `attachment` entries with `hook_additional_context` type)
 - Exchanges sent to Claude Sonnet 4.6 for blind evaluation
 - Each judged on: was the hedge appropriate? did behavior change? did the hook add value?
-- Covers 4 projects, 8 sessions, 44 total fires from 2026-06-03 through 2026-06-27
+- Covers 19 projects, 116 total fires from 2026-06-03 through 2026-07-24
+- Eval 3 analyzed all 71 fires (no sampling) for the June 28–July 24 period
 
 ## License
 
